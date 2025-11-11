@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jogo da Adivinhação 🎯</title>
+  <style>
+    :root{
+      --bg1:#3c6ee2;
+      --bg2:#6cc0ff;
+      --card:#ffffff;
+      --accent:#2196f3;
+      --success:#4caf50;
+      --danger:#f44336;
+      --muted:#777;
+      --glass: rgba(255,255,255,0.85);
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      background: linear-gradient(135deg,var(--bg1),var(--bg2));
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .wrap{
+      width:1024px;
+      max-width:98%;
+      height:640px;
+      max-height:95vh;
+      display:grid;
+      grid-template-columns:2fr 1fr;
+      gap:20px;
+      box-shadow:0 12px 40px rgba(0,0,0,0.18);
+      border-radius:16px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.82));
+    }
+    .left{
+      padding:28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.95));
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    h1{margin:0;font-size:22px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type="text"], input[type="number"]{
+      padding:10px 12px;
+      font-size:15px;
+      border-radius:8px;
+      border:1px solid #e6e6e6;
+      width:100%;
+      box-sizing:border-box;
+    }
+    .btn{
+      display:inline-block;
+      padding:10px 14px;
+      border-radius:10px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      font-size:14px;
+    }
+    .btn-play{background:var(--success); color:#fff}
+    .btn-ranking{background:var(--accent); color:#fff}
+    .hint{
+      padding:12px;border-radius:10px;background:var(--glass);border:1px solid rgba(0,0,0,0.04);
+      display:inline-block;font-weight:600;
+    }
+    .right{
+      padding:18px;
+      background:linear-gradient(180deg,#fafafa,#f6f6f6);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .list{
+      flex:1; overflow:auto;
+      border-radius:8px; padding:10px; background:white; border:1px solid #eee;
+    }
+    .list-item{padding:8px;border-bottom:1px dashed #eee;font-size:14px}
+    .footer{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .result{font-size:16px;font-weight:700;margin-top:6px}
+    .small{font-size:13px;color:var(--muted)}
+    .modal{
+      position:fixed;left:0;top:0;right:0;bottom:0;display:none;
+      align-items:center;justify-content:center;background:rgba(0,0,0,0.45);
+    }
+    .modal .box{
+      width:480px;max-width:95%;background:#fff;padding:18px;border-radius:12px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.2);
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #f0f0f0}
+    @media(max-width:800px){
+      .wrap{grid-template-columns:1fr; height:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Jogo da Adivinhação">
+    <div class="left">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h1>🎯 Adivinhe o número entre 1 e 100</h1>
+        <div class="hint small">Versão web — ranking online</div>
+      </div>
+
+      <div>
+        <label for="playerName">Nome do jogador</label>
+        <input id="playerName" type="text" placeholder="Digite seu nome..." />
+      </div>
+
+      <div style="margin-top:6px">
+        <label for="guessInput">Seu palpite</label>
+        <input id="guessInput" type="number" min="1" max="100" placeholder="1 - 100" />
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button id="sendBtn" class="btn btn-play">Enviar Palpite</button>
+        <button id="restartBtn" class="btn" style="background:#ffb74d">Reiniciar</button>
+        <button id="showRankingBtn" class="btn btn-ranking">🏆 Ver Ranking</button>
+      </div>
+
+      <div class="result" id="resultText" aria-live="polite"></div>
+
+      <div style="margin-top:8px">
+        <div class="small">Dicas:</div>
+        <ul style="margin:6px 0 0 18px" class="small">
+          <li>Use Enter para enviar</li>
+          <li>O ranking é salvo online (npoint.io)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="right" aria-label="Painel lateral">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <strong>📜 Seus palpites</strong>
+        <span class="small" id="attemptsLabel">Tentativas: 0</span>
+      </div>
+      <div class="list" id="guessesList" role="log" aria-live="polite"></div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:8px">
+          <input id="minRange" type="number" value="1" style="width:72px" />
+          <input id="maxRange" type="number" value="100" style="width:72px" />
+          <button id="newRangeBtn" class="btn">Aplicar intervalo</button>
+        </div>
+        <div class="small">Define o intervalo do número secreto. Padrão: 1 - 100</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ranking -->
+  <div class="modal" id="rankingModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="box">
+      <h3>🏆 Ranking - Menos tentativas primeiro</h3>
+      <div style="max-height:360px;overflow:auto;margin-top:8px">
+        <table id="rankingTable" aria-live="polite">
+          <thead><tr><th>Nome</th><th>Tentativas</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+        <button id="closeModalBtn" class="btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const playerName = document.getElementById('playerName');
+      const guessInput = document.getElementById('guessInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const guessesList = document.getElementById('guessesList');
+      const resultText = document.getElementById('resultText');
+      const attemptsLabel = document.getElementById('attemptsLabel');
+      const rankingModal = document.getElementById('rankingModal');
+      const rankingTableBody = document.querySelector('#rankingTable tbody');
+      const showRankingBtn = document.getElementById('showRankingBtn');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const minRange = document.getElementById('minRange');
+      const maxRange = document.getElementById('maxRange');
+      const newRangeBtn = document.getElementById('newRangeBtn');
+
+      let minVal = 1, maxVal = 100;
+      let secret = randRange(minVal, maxVal);
+      let attempts = 0;
+
+      // === CONFIGURAÇÃO DO RANKING ONLINE ===
+      const API_URL = "https://api.npoint.io/25b15bd915d774203d0d";
+
+      async function loadRanking(){
+        try {
+          const res = await fetch(API_URL);
+          if(!res.ok) throw new Error("Erro ao buscar dados");
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } catch(e){
+          console.error("Erro ao carregar ranking:", e);
+          return [];
+        }
+      }
+
+      async function saveRanking(arr){
+        try {
+          await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(arr)
+          });
+        } catch(e){
+          console.error("Erro ao salvar ranking:", e);
+        }
+      }
+
+      function randRange(a,b){
+        a = parseInt(a); b = parseInt(b);
+        return Math.floor(Math.random()*(b-a+1)) + a;
+      }
+
+      function restartGame(){
+        secret = randRange(minVal, maxVal);
+        attempts = 0;
+        guessesList.innerHTML = '';
+        resultText.textContent = '';
+        attemptsLabel.textContent = 'Tentativas: 0';
+        guessInput.value = '';
+        guessInput.focus();
+      }
+
+      function sanitizeName(n){
+        return n ? String(n).trim().slice(0,40) : '';
+      }
+
+      async function submitGuess(){
+        const name = sanitizeName(playerName.value);
+        if(!name){
+          alert('Por favor, digite seu nome antes de jogar!');
+          playerName.focus();
+          return;
+        }
+        const raw = guessInput.value;
+        if(raw === '' || isNaN(raw)){
+          alert('Por favor, digite um número válido!');
+          guessInput.focus();
+          return;
+        }
+        const g = Number(raw);
+        if(g < minVal || g > maxVal){
+          alert(`Digite um número entre ${minVal} e ${maxVal}`);
+          guessInput.focus();
+          return;
+        }
+        attempts++;
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.textContent = `Tentativa ${attempts}: ${g}`;
+        guessesList.appendChild(item);
+        attemptsLabel.textContent = 'Tentativas: ' + attempts;
+
+        if(g < secret){
+          resultText.textContent = '🔼 O número é MAIOR!';
+        } else if(g > secret){
+          resultText.textContent = '🔽 O número é MENOR!';
+        } else {
+          resultText.textContent = `🎉 Você acertou em ${attempts} tentativas!`;
+
+          // Carrega ranking atual, adiciona o jogador e salva novamente
+          const ranking = await loadRanking();
+          ranking.push({ nome: name, tentativas: attempts, data: new Date().toISOString() });
+          ranking.sort((a,b) => a.tentativas - b.tentativas || a.nome.localeCompare(b.nome, 'pt'));
+          await saveRanking(ranking);
+
+          setTimeout(()=> {
+            if(confirm(`🎉 Você acertou em ${attempts} tentativas!\n\nDeseja jogar novamente?`)){
+              restartGame();
+            } else {
+              showRanking();
+            }
+          }, 80);
+        }
+        guessInput.value = '';
+        guessInput.focus();
+      }
+
+      sendBtn.addEventListener('click', submitGuess);
+      guessInput.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') submitGuess();
+      });
+      restartBtn.addEventListener('click', restartGame);
+
+      async function showRanking(){
+        const ranking = await loadRanking();
+        rankingTableBody.innerHTML = '';
+
+        if (!Array.isArray(ranking) || ranking.length === 0){
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 2;
+          td.textContent = 'Nenhuma pontuação ainda.';
+          td.style.color = '#666';
+          tr.appendChild(td);
+          rankingTableBody.appendChild(tr);
+        } else {
+          ranking.forEach(row => {
+            const tr = document.createElement('tr');
+            const nome = document.createElement('td');
+            nome.textContent = row.nome || '(sem nome)';
+            const t = document.createElement('td');
+            t.textContent = row.tentativas ?? '?';
+            tr.appendChild(nome);
+            tr.appendChild(t);
+            rankingTableBody.appendChild(tr);
+          });
+        }
+
+        rankingModal.style.display = 'flex';
+        rankingModal.setAttribute('aria-hidden','false');
+      }
+
+      showRankingBtn.addEventListener('click', showRanking);
+      closeModalBtn.addEventListener('click', () => {
+        rankingModal.style.display = 'none';
+        rankingModal.setAttribute('aria-hidden','true');
+      });
+      rankingModal.addEventListener('click', (e) => {
+        if(e.target === rankingModal){
+          rankingModal.style.display = 'none';
+        }
+      });
+
+      newRangeBtn.addEventListener('click', () => {
+        const a = Number(minRange.value) || 1;
+        const b = Number(maxRange.value) || 100;
+        if(!Number.isFinite(a) || !Number.isFinite(b) || a >= b){
+          alert('Intervalo inválido. Certifique-se que min < max e ambos números.');
+          return;
+        }
+        minVal = Math.round(a);
+        maxVal = Math.round(b);
+        restartGame();
+        alert(`Intervalo atualizado: ${minVal} - ${maxVal}`);
+      });
+
+      restartGame();
+      playerName.focus();
+    })();
+  </script>
+</body>
+</html>
